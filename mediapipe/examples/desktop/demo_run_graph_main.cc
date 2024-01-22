@@ -29,9 +29,14 @@
 #include "mediapipe/framework/port/status.h"
 #include "mediapipe/util/resource_util.h"
 
+#include "mediapipe/calculators/util/landmarks_to_render_data_calculator.h"
+
+
 constexpr char kInputStream[] = "input_video";
 constexpr char kOutputStream[] = "output_video";
 constexpr char kWindowName[] = "MediaPipe";
+//constexpr char kMultiLandmarksStream[] = "multi_face_landmarks";
+constexpr char kLandmarksStream[] = "single_face_landmarks";
 
 ABSL_FLAG(std::string, calculator_graph_config_file, "",
           "Name of file containing text format CalculatorGraphConfig proto.");
@@ -57,96 +62,80 @@ absl::Status RunMPPGraph() {
   mediapipe::CalculatorGraph graph;
   MP_RETURN_IF_ERROR(graph.Initialize(config));
 
-  ABSL_LOG(INFO) << "Initialize the camera or load the video.";
-  cv::VideoCapture capture;
-  const bool load_video = !absl::GetFlag(FLAGS_input_video_path).empty();
-  if (load_video) {
-    capture.open(absl::GetFlag(FLAGS_input_video_path));
-  } else {
-    capture.open(0);
-  }
-  RET_CHECK(capture.isOpened());
-
-  cv::VideoWriter writer;
-  const bool save_video = !absl::GetFlag(FLAGS_output_video_path).empty();
-  if (!save_video) {
-    cv::namedWindow(kWindowName, /*flags=WINDOW_AUTOSIZE*/ 1);
-#if (CV_MAJOR_VERSION >= 3) && (CV_MINOR_VERSION >= 2)
-    capture.set(cv::CAP_PROP_FRAME_WIDTH, 640);
-    capture.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
-    capture.set(cv::CAP_PROP_FPS, 30);
-#endif
-  }
-
   ABSL_LOG(INFO) << "Start running the calculator graph.";
   MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller,
                       graph.AddOutputStreamPoller(kOutputStream));
+  //MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller_multi_landmark,graph.AddOutputStreamPoller(kMultiLandmarksStream));
+  MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller_single_landmark,
+                      graph.AddOutputStreamPoller(kLandmarksStream));
+
   MP_RETURN_IF_ERROR(graph.StartRun({}));
 
   ABSL_LOG(INFO) << "Start grabbing and processing frames.";
-  bool grab_frames = true;
-  while (grab_frames) {
-    // Capture opencv camera or video frame.
-    cv::Mat camera_frame_raw;
-    capture >> camera_frame_raw;
-    if (camera_frame_raw.empty()) {
-      if (!load_video) {
-        ABSL_LOG(INFO) << "Ignore empty frames from camera.";
-        continue;
-      }
-      ABSL_LOG(INFO) << "Empty frame, end of video reached.";
-      break;
+  cv::Mat myInputImg;
+  myInputImg = cv::imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/onew3.jpg");
+  cv::Mat inputImg;
+  cv::cvtColor(myInputImg, inputImg, cv::COLOR_BGR2RGB);  
+
+  auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
+      mediapipe::ImageFormat::SRGB, inputImg.cols, inputImg.rows,
+      mediapipe::ImageFrame::kDefaultAlignmentBoundary);
+  cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
+  inputImg.copyTo(input_frame_mat);
+
+  // Send image packet into the graph.
+  size_t frame_timestamp_us =
+      (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
+  MP_RETURN_IF_ERROR(graph.AddPacketToInputStream(
+      kInputStream, mediapipe::Adopt(input_frame.release())
+                        .At(mediapipe::Timestamp(frame_timestamp_us))));
+
+  // Get the graph result packet, or stop if that fails.
+  mediapipe::Packet packet;
+  mediapipe::Packet multi_landmark_packet;
+  mediapipe::Packet landmark_packet;
+  if (!poller.Next(&packet)) ABSL_LOG(INFO) << "stop graph";
+  //if (!poller_multi_landmark.Next(&multi_landmark_packet)) ABSL_LOG(INFO) << "stop graph";
+  if (!poller_single_landmark.Next(&landmark_packet)) ABSL_LOG(INFO) << "stop graph";
+  //ABSL_LOG(INFO) << landmark_packet.DebugTypeName();
+  auto& output_frame = packet.Get<mediapipe::ImageFrame>();
+  auto& output_landmarks = landmark_packet.Get<mediapipe::NormalizedLandmarkList>();
+  //auto& output_multi_landmarks = multi_landmark_packet.Get<std::vector<mediapipe::NormalizedLandmarkList>>();
+  //std::cout << "size:" << output_multi_landmarks.size() << std::endl;
+  /*
+  for (const mediapipe::NormalizedLandmarkList &normalizedlandmarkList : output_multi_landmarks)
+    {
+      std::cout << "FaceLandmarks:";
+      std::cout << normalizedlandmarkList.DebugString();
+      std::cout << std::cout << output_landmarks[0].NormalizedLandmark;
     }
-    cv::Mat camera_frame;
-    cv::cvtColor(camera_frame_raw, camera_frame, cv::COLOR_BGR2RGB);
-    if (!load_video) {
-      cv::flip(camera_frame, camera_frame, /*flipcode=HORIZONTAL*/ 1);
+  */
+ 
+  for (int i = 0; i < output_landmarks.landmark_size(); i++){
+        std::cout<< i+1 << "th landmark:" << std::endl;
+        std::cout<< output_landmarks.landmark(i).x() <<std::endl;
+        std::cout<< output_landmarks.landmark(i).y() <<std::endl;
+        std::cout<< output_landmarks.landmark(i).z() <<std::endl;
     }
-
-    // Wrap Mat into an ImageFrame.
-    auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
-        mediapipe::ImageFormat::SRGB, camera_frame.cols, camera_frame.rows,
-        mediapipe::ImageFrame::kDefaultAlignmentBoundary);
-    cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
-    camera_frame.copyTo(input_frame_mat);
-
-    // Send image packet into the graph.
-    size_t frame_timestamp_us =
-        (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
-    MP_RETURN_IF_ERROR(graph.AddPacketToInputStream(
-        kInputStream, mediapipe::Adopt(input_frame.release())
-                          .At(mediapipe::Timestamp(frame_timestamp_us))));
-
-    // Get the graph result packet, or stop if that fails.
-    mediapipe::Packet packet;
-    if (!poller.Next(&packet)) break;
-    auto& output_frame = packet.Get<mediapipe::ImageFrame>();
-
-    // Convert back to opencv for display or saving.
-    cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
-    cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
-    if (save_video) {
-      if (!writer.isOpened()) {
-        ABSL_LOG(INFO) << "Prepare video writer.";
-        writer.open(absl::GetFlag(FLAGS_output_video_path),
-                    mediapipe::fourcc('a', 'v', 'c', '1'),  // .mp4
-                    capture.get(cv::CAP_PROP_FPS), output_frame_mat.size());
-        RET_CHECK(writer.isOpened());
-      }
-      writer.write(output_frame_mat);
-    } else {
-      cv::imshow(kWindowName, output_frame_mat);
-      // Press any key to exit.
-      const int pressed_key = cv::waitKey(5);
-      if (pressed_key >= 0 && pressed_key != 255) grab_frames = false;
-    }
+  float w = 600;
+  float h = 600;
+  cv::Mat draw_mat(w, h, CV_8UC3);
+  for (int i = 0; i < output_landmarks.landmark_size(); i++){
+    cv::circle(draw_mat, cv::Point(output_landmarks.landmark(i).x()*w, output_landmarks.landmark(i).y()*h), 1, cv::Scalar(0, 0, 255), - 1);
   }
+  //cv::circle(draw_mat, cv::Point(100, 300), 10, cv::Scalar(0, 255, 255), - 1);
+  imshow("img", draw_mat);
 
+  // Convert back to opencv for display or saving.
+  cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
+  cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
+  //cv::imshow(kWindowName, output_frame_mat);
+  cv::waitKey();
   ABSL_LOG(INFO) << "Shutting down.";
-  if (writer.isOpened()) writer.release();
   MP_RETURN_IF_ERROR(graph.CloseInputStream(kInputStream));
   return graph.WaitUntilDone();
 }
+      
 
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);

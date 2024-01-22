@@ -82,6 +82,7 @@ mediapipe_simple_subgraph(
         "//mediapipe/calculators/core:gate_calculator",
         "//mediapipe/calculators/core:previous_loopback_calculator",
         "//mediapipe/calculators/image:image_properties_calculator",
+        "//mediapipe/calculators/util:face_landmark_write_to_file_calculator",
         "//mediapipe/calculators/util:association_norm_rect_calculator",
         "//mediapipe/calculators/util:collection_has_min_size_calculator",
         "//mediapipe/modules/face_detection:face_detection_short_range_cpu",
