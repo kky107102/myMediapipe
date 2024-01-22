@@ -1626,6 +1626,17 @@ cc_library(
     alwayslink = 1,
 )
 
+cc_library(
+    name = "face_landmark_write_to_file_calculator",
+    srcs = ["face_landmark_write_to_file_calculator.cc"],
+    deps = [
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework/formats:landmark_cc_proto",
+        "//mediapipe/framework/port:vector",
+    ],
+    alwayslink = 1,
+)
+
 cc_test(
     name = "landmarks_transformation_calculator_test",
     srcs = ["landmarks_transformation_calculator_test.cc"],

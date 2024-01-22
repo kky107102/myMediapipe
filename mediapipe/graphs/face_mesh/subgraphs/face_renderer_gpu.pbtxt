@@ -53,7 +53,7 @@ node {
   output_stream: "RENDER_DATA:landmarks_render_data"
   node_options: {
     [type.googleapis.com/mediapipe.LandmarksToRenderDataCalculatorOptions] {
-      landmark_color { r: 255 g: 0 b: 0 }
+      landmark_color { r: 0 g: 0 b: 225 }
       connection_color { r: 0 g: 255 b: 0 }
       thickness: 2
       visualize_landmark_depth: false

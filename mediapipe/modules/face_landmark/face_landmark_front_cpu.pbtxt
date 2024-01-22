@@ -49,6 +49,8 @@ input_side_packet: "WITH_ATTENTION:with_attention"
 # this packet so that they don't wait for it unnecessarily.
 output_stream: "LANDMARKS:multi_face_landmarks"
 
+output_stream: "SINGLE_LANDMARKS:face_landmarks"
+
 # Extra outputs (for debugging, for instance).
 # Detected faces. (std::vector<Detection>)
 output_stream: "DETECTIONS:face_detections"
