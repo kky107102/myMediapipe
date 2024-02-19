@@ -111,14 +111,14 @@ float thinPlateSpline(const Point2f& p1, const Point2f& p2) {
 std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, const std::vector<Point2f>& model_landmarks) {
   Mat del_x(src_landmarks.size(), 1, CV_32F);
   Mat del_y(src_landmarks.size(), 1, CV_32F);
-  Mat new_del_x(src_landmarks.size(), 1, CV_32F);
-  Mat new_del_y(src_landmarks.size(), 1, CV_32F);
+  // Mat new_del_x(src_landmarks.size(), 1, CV_32F);
+  // Mat new_del_y(src_landmarks.size(), 1, CV_32F);
  
   for(int i = 0; i < src_landmarks.size(); i++){
     del_x.at<float>(i) = model_landmarks[i].x - src_landmarks[i].x;
     del_y.at<float>(i) = model_landmarks[i].y - src_landmarks[i].y;
-    new_del_x.at<float>(i) = del_x.at<float>(i) - model_landmarks[i].x;
-    new_del_y.at<float>(i) = del_y.at<float>(i) - model_landmarks[i].y;
+    // new_del_x.at<float>(i) = del_x.at<float>(i) - model_landmarks[i].x;
+    // new_del_y.at<float>(i) = del_y.at<float>(i) - model_landmarks[i].y;
     
   }
   
@@ -131,32 +131,31 @@ std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, cons
   
   Mat weight_x(src_landmarks.size(),1,CV_32F);
   Mat weight_y(src_landmarks.size(),1,CV_32F);
-  solve(matrix, new_del_x, weight_x);  
-  solve(matrix, new_del_y, weight_y);
+  solve(matrix, del_x, weight_x);  
+  solve(matrix, del_y, weight_y);
 
   return std::make_tuple(weight_x, weight_y);
 }
 
 std::tuple<Mat,Mat> RBF(const std::vector<Point2f>& src_landmarks, const std::vector<Point2f>& model_landmarks, const Mat& srcImg, const std::tuple<Mat,Mat>& weight){
   
-  Mat del_x(src_landmarks.size(), 1, CV_32F);
-  Mat del_y(src_landmarks.size(), 1, CV_32F);
-  Mat samplePoints_x(src_landmarks.size(), 2, CV_32F);
-  Mat samplePoints_y(src_landmarks.size(), 2, CV_32F);
-  for (int i = 0 ; i < src_landmarks.size(); i++){
-    del_x.at<float>(i) = model_landmarks[i].x - src_landmarks[i].x;
-    del_y.at<float>(i) = model_landmarks[i].y - src_landmarks[i].y;
-    samplePoints_x.at<float>(i,0) = src_landmarks[i].x;
-    samplePoints_x.at<float>(i,1) = (float)1;
-    samplePoints_y.at<float>(i,0) = src_landmarks[i].y;
-    samplePoints_y.at<float>(i,1) = (float)1;
-  }
-  Mat coeff_x(2, 1, CV_32F);
-  Mat coeff_y(2, 1, CV_32F);
-  solve(samplePoints_x, del_x, coeff_x, DECOMP_SVD);
-  solve(samplePoints_y, del_y, coeff_y, DECOMP_SVD);
-  std::cout << coeff_x << std::endl;
-  std::cout << coeff_y << std::endl;
+  // Mat del_x(src_landmarks.size(), 1, CV_32F);
+  // Mat del_y(src_landmarks.size(), 1, CV_32F);
+  // Mat samplePoints_x(src_landmarks.size(), 2, CV_32F);
+  // Mat samplePoints_y(src_landmarks.size(), 2, CV_32F);
+  // for (int i = 0 ; i < src_landmarks.size(); i++){
+  //   del_x.at<float>(i) = model_landmarks[i].x - src_landmarks[i].x;
+  //   del_y.at<float>(i) = model_landmarks[i].y - src_landmarks[i].y;
+  //   samplePoints_x.at<float>(i,0) = src_landmarks[i].x;
+  //   samplePoints_x.at<float>(i,1) = (float)1;
+  //   samplePoints_y.at<float>(i,0) = src_landmarks[i].y;
+  //   samplePoints_y.at<float>(i,1) = (float)1;
+  // }
+  // Mat coeff_x(2, 1, CV_32F);
+  // Mat coeff_y(2, 1, CV_32F);
+  // solve(samplePoints_x, del_x, coeff_x, DECOMP_SVD);
+  // solve(samplePoints_y, del_y, coeff_y, DECOMP_SVD);
+
   Mat map_x = Mat::zeros(srcImg.size(), CV_32F);
   Mat map_y = Mat::zeros(srcImg.size(), CV_32F);
   for (int row = 0; row < srcImg.rows; row++){
@@ -165,15 +164,15 @@ std::tuple<Mat,Mat> RBF(const std::vector<Point2f>& src_landmarks, const std::ve
         map_x.at<float>(row,col) -= std::get<0>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(row,col)); 
         map_y.at<float>(row,col) -= std::get<1>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(col,row));
       }
-      map_x.at<float>(row,col) += col*coeff_x.at<float>(0,0) + coeff_x.at<float>(1,0);
-      map_y.at<float>(row,col) += row*coeff_y.at<float>(0,0) + coeff_y.at<float>(1,0);
-      // map_x.at<float>(row,col) += col;
-      // map_y.at<float>(row,col) += row;
+      // map_x.at<float>(row,col) += col*coeff_x.at<float>(0,0) + coeff_x.at<float>(1,0);
+      // map_y.at<float>(row,col) += row*coeff_y.at<float>(0,0) + coeff_y.at<float>(1,0);
+      map_x.at<float>(row,col) += col;
+      map_y.at<float>(row,col) += row;
     }
   }
   return std::make_tuple(map_x, map_y);
 
-  // 잘 나온 것
+  // 랜드마크 비교해서 src의 점이 mode의l 점 위치로 잘 나온 것
   // Mat point_x = Mat::zeros(src_landmarks.size(),1, CV_32F);
   // Mat point_y = Mat::zeros(src_landmarks.size(),1, CV_32F);
   // for (int i = 0; i < src_landmarks.size(); i++){
@@ -227,7 +226,7 @@ int main(int argc, char** argv) {
   auto weight = getRBFWeight(pointwarp, p2);
   Mat dst(myInputImg.size(), myInputImg.type());
   
-  auto [map_x, map_y] = RBF(p1, p2, imgwarp, weight);
+  auto [map_x, map_y] = RBF(pointwarp, p2, imgwarp, weight);
   remap(imgwarp, dst, map_x, map_y, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
   //imshow("img0", myInputImg);
   imshow("img1", imgwarp);
