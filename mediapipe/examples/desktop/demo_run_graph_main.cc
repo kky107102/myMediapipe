@@ -14,7 +14,6 @@
 //
 // An example of sending OpenCV webcam frames into a MediaPipe graph.
 #include <cstdlib>
-#include <cmath>
 
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
@@ -23,23 +22,16 @@
 #include "mediapipe/framework/formats/image_frame.h"
 #include "mediapipe/framework/formats/image_frame_opencv.h"
 #include "mediapipe/framework/port/file_helpers.h"
-#include "mediapipe/framework/port/opencv_calib3d_inc.h"
 #include "mediapipe/framework/port/opencv_highgui_inc.h"
-#include "mediapipe/framework/port/opencv_features2d_inc.h"
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 #include "mediapipe/framework/port/opencv_video_inc.h"
 #include "mediapipe/framework/port/parse_text_proto.h"
 #include "mediapipe/framework/port/status.h"
 #include "mediapipe/util/resource_util.h"
-#include "mediapipe/framework/formats/rect.pb.h"
-#include "mediapipe/framework/formats/landmark.pb.h"
 
-using namespace cv;
 constexpr char kInputStream[] = "input_video";
 constexpr char kOutputStream[] = "output_video";
 constexpr char kWindowName[] = "MediaPipe";
-constexpr char kLandmarksStream[] = "single_face_landmarks";
-constexpr char kROIStream[] = "face_rect_from_landmarks";
 
 ABSL_FLAG(std::string, calculator_graph_config_file, "",
           "Name of file containing text format CalculatorGraphConfig proto.");
@@ -50,7 +42,7 @@ ABSL_FLAG(std::string, output_video_path, "",
           "Full path of where to save result (.mp4 only). "
           "If not provided, show result in a window.");
 
-absl::Status RunMPPGraph(Mat img, mediapipe::NormalizedLandmarkList& output_landmarks) {
+absl::Status RunMPPGraph() {
   std::string calculator_graph_config_contents;
   MP_RETURN_IF_ERROR(mediapipe::file::GetContents(
       absl::GetFlag(FLAGS_calculator_graph_config_file),
@@ -60,179 +52,111 @@ absl::Status RunMPPGraph(Mat img, mediapipe::NormalizedLandmarkList& output_land
   mediapipe::CalculatorGraphConfig config =
       mediapipe::ParseTextProtoOrDie<mediapipe::CalculatorGraphConfig>(
           calculator_graph_config_contents);
+
   ABSL_LOG(INFO) << "Initialize the calculator graph.";
   mediapipe::CalculatorGraph graph;
   MP_RETURN_IF_ERROR(graph.Initialize(config));
 
+  ABSL_LOG(INFO) << "Initialize the camera or load the video.";
+  cv::VideoCapture capture;
+  const bool load_video = !absl::GetFlag(FLAGS_input_video_path).empty();
+  if (load_video) {
+    capture.open(absl::GetFlag(FLAGS_input_video_path));
+  } else {
+    capture.open(0);
+  }
+  RET_CHECK(capture.isOpened());
+
+  cv::VideoWriter writer;
+  const bool save_video = !absl::GetFlag(FLAGS_output_video_path).empty();
+  if (!save_video) {
+    cv::namedWindow(kWindowName, /*flags=WINDOW_AUTOSIZE*/ 1);
+#if (CV_MAJOR_VERSION >= 3) && (CV_MINOR_VERSION >= 2)
+    capture.set(cv::CAP_PROP_FRAME_WIDTH, 640);
+    capture.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+    capture.set(cv::CAP_PROP_FPS, 30);
+#endif
+  }
+
   ABSL_LOG(INFO) << "Start running the calculator graph.";
-  //MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller, graph.AddOutputStreamPoller(kOutputStream));
-  //MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller_rect, graph.AddOutputStreamPoller(kROIStream));
-  MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller_single_landmark, graph.AddOutputStreamPoller(kLandmarksStream));
+  MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller,
+                      graph.AddOutputStreamPoller(kOutputStream));
   MP_RETURN_IF_ERROR(graph.StartRun({}));
 
   ABSL_LOG(INFO) << "Start grabbing and processing frames.";
-  cv::Mat inputImg;
-  cv::cvtColor(img, inputImg, cv::COLOR_BGR2RGB);
-  auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
-        mediapipe::ImageFormat::SRGB, inputImg.cols, inputImg.rows,
-        mediapipe::ImageFrame::kDefaultAlignmentBoundary);
-  cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
-  inputImg.copyTo(input_frame_mat);
-
-  size_t frame_timestamp_us =
-      (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
-  MP_RETURN_IF_ERROR(graph.AddPacketToInputStream(
-      kInputStream, mediapipe::Adopt(input_frame.release())
-                        .At(mediapipe::Timestamp(frame_timestamp_us))));
-  mediapipe::Packet landmark_packet;
-  //mediapipe::Packet rect_packet;
-  MP_RETURN_IF_ERROR(graph.CloseInputStream(kInputStream));
-  if (!poller_single_landmark.Next(&landmark_packet)) ABSL_LOG(INFO) << "stop graph";
-  //if (!poller_rect.Next(&rect_packet)) ABSL_LOG(INFO) << "stop graph";
-  output_landmarks = landmark_packet.Get<mediapipe::NormalizedLandmarkList>();
-  //output_rect = rect_packet.Get<mediapipe::NormalizedRect>();
-  //cv::Point2f center(output_rect.x_center()*w, output_rect.y_center()*h);
-  //cv::Size2f size(output_rect.width()*w, output_rect.height()*h);
-  //cv::RotatedRect rot_rect(center, size, output_rect.rotation());
-  //cv::Point2f pts[4];
-  // rot_rect.points(pts);
-  // for (int i = 0; i < 4; i++){
-  //   cv::line(myInputImg, pts[i], pts[(i+1)%4], cv::Scalar(0,255,255),4);
-  // }
-  return graph.WaitUntilDone();
-}     
-
-float thinPlateSpline(const Point2f& p1, const Point2f& p2) {
-  auto d = sqrt(pow(p1.x-p2.x, 2) + pow(p1.y-p2.y, 2));
-  if (d == 0) return 1;
-  return d*d*log(d);
-}
-
-std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, const std::vector<Point2f>& model_landmarks) {
-  Mat del_x(src_landmarks.size(), 1, CV_32F);
-  Mat del_y(src_landmarks.size(), 1, CV_32F);
-  // Mat new_del_x(src_landmarks.size(), 1, CV_32F);
-  // Mat new_del_y(src_landmarks.size(), 1, CV_32F);
- 
-  for(int i = 0; i < src_landmarks.size(); i++){
-    del_x.at<float>(i) = model_landmarks[i].x - src_landmarks[i].x;
-    del_y.at<float>(i) = model_landmarks[i].y - src_landmarks[i].y;
-    // new_del_x.at<float>(i) = del_x.at<float>(i) - model_landmarks[i].x;
-    // new_del_y.at<float>(i) = del_y.at<float>(i) - model_landmarks[i].y;
-    
-  }
-  
-  Mat matrix(src_landmarks.size(),src_landmarks.size(), CV_32F);
-  for(int i = 0; i < matrix.rows; i++){
-    for (int j = 0; j < matrix.cols; j++){
-      matrix.at<float>(i,j) = thinPlateSpline(src_landmarks[j], src_landmarks[i]);
-    }
-  }
-  
-  Mat weight_x(src_landmarks.size(),1,CV_32F);
-  Mat weight_y(src_landmarks.size(),1,CV_32F);
-  solve(matrix, del_x, weight_x);  
-  solve(matrix, del_y, weight_y);
-
-  return std::make_tuple(weight_x, weight_y);
-}
-
-std::tuple<Mat,Mat> RBF(const std::vector<Point2f>& src_landmarks, const std::vector<Point2f>& model_landmarks, const Mat& srcImg, const std::tuple<Mat,Mat>& weight){
-  
-  // Mat del_x(src_landmarks.size(), 1, CV_32F);
-  // Mat del_y(src_landmarks.size(), 1, CV_32F);
-  // Mat samplePoints_x(src_landmarks.size(), 2, CV_32F);
-  // Mat samplePoints_y(src_landmarks.size(), 2, CV_32F);
-  // for (int i = 0 ; i < src_landmarks.size(); i++){
-  //   del_x.at<float>(i) = model_landmarks[i].x - src_landmarks[i].x;
-  //   del_y.at<float>(i) = model_landmarks[i].y - src_landmarks[i].y;
-  //   samplePoints_x.at<float>(i,0) = src_landmarks[i].x;
-  //   samplePoints_x.at<float>(i,1) = (float)1;
-  //   samplePoints_y.at<float>(i,0) = src_landmarks[i].y;
-  //   samplePoints_y.at<float>(i,1) = (float)1;
-  // }
-  // Mat coeff_x(2, 1, CV_32F);
-  // Mat coeff_y(2, 1, CV_32F);
-  // solve(samplePoints_x, del_x, coeff_x, DECOMP_SVD);
-  // solve(samplePoints_y, del_y, coeff_y, DECOMP_SVD);
-
-  Mat map_x = Mat::zeros(srcImg.size(), CV_32F);
-  Mat map_y = Mat::zeros(srcImg.size(), CV_32F);
-  for (int row = 0; row < srcImg.rows; row++){
-    for (int col = 0; col < srcImg.cols; col++){
-      for (int k = 0; k < src_landmarks.size(); k++){
-        map_x.at<float>(row,col) -= std::get<0>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(row,col)); 
-        map_y.at<float>(row,col) -= std::get<1>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(col,row));
+  bool grab_frames = true;
+  while (grab_frames) {
+    // Capture opencv camera or video frame.
+    cv::Mat camera_frame_raw;
+    capture >> camera_frame_raw;
+    if (camera_frame_raw.empty()) {
+      if (!load_video) {
+        ABSL_LOG(INFO) << "Ignore empty frames from camera.";
+        continue;
       }
-      // map_x.at<float>(row,col) += col*coeff_x.at<float>(0,0) + coeff_x.at<float>(1,0);
-      // map_y.at<float>(row,col) += row*coeff_y.at<float>(0,0) + coeff_y.at<float>(1,0);
-      map_x.at<float>(row,col) += col;
-      map_y.at<float>(row,col) += row;
+      ABSL_LOG(INFO) << "Empty frame, end of video reached.";
+      break;
+    }
+    cv::Mat camera_frame;
+    cv::cvtColor(camera_frame_raw, camera_frame, cv::COLOR_BGR2RGB);
+    if (!load_video) {
+      cv::flip(camera_frame, camera_frame, /*flipcode=HORIZONTAL*/ 1);
+    }
+
+    // Wrap Mat into an ImageFrame.
+    auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
+        mediapipe::ImageFormat::SRGB, camera_frame.cols, camera_frame.rows,
+        mediapipe::ImageFrame::kDefaultAlignmentBoundary);
+    cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
+    camera_frame.copyTo(input_frame_mat);
+
+    // Send image packet into the graph.
+    size_t frame_timestamp_us =
+        (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
+    MP_RETURN_IF_ERROR(graph.AddPacketToInputStream(
+        kInputStream, mediapipe::Adopt(input_frame.release())
+                          .At(mediapipe::Timestamp(frame_timestamp_us))));
+
+    // Get the graph result packet, or stop if that fails.
+    mediapipe::Packet packet;
+    if (!poller.Next(&packet)) break;
+    auto& output_frame = packet.Get<mediapipe::ImageFrame>();
+
+    // Convert back to opencv for display or saving.
+    cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
+    cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
+    if (save_video) {
+      if (!writer.isOpened()) {
+        ABSL_LOG(INFO) << "Prepare video writer.";
+        writer.open(absl::GetFlag(FLAGS_output_video_path),
+                    mediapipe::fourcc('a', 'v', 'c', '1'),  // .mp4
+                    capture.get(cv::CAP_PROP_FPS), output_frame_mat.size());
+        RET_CHECK(writer.isOpened());
+      }
+      writer.write(output_frame_mat);
+    } else {
+      cv::imshow(kWindowName, output_frame_mat);
+      // Press any key to exit.
+      const int pressed_key = cv::waitKey(5);
+      if (pressed_key >= 0 && pressed_key != 255) grab_frames = false;
     }
   }
-  return std::make_tuple(map_x, map_y);
 
-  // 랜드마크 비교해서 src의 점이 mode의l 점 위치로 잘 나온 것
-  // Mat point_x = Mat::zeros(src_landmarks.size(),1, CV_32F);
-  // Mat point_y = Mat::zeros(src_landmarks.size(),1, CV_32F);
-  // for (int i = 0; i < src_landmarks.size(); i++){
-  //   for (int j = 0; j < src_landmarks.size(); j++){
-  //     point_x.at<float>(i,0) += std::get<0>(weight).at<float>(j)*thinPlateSpline(src_landmarks[j], src_landmarks[i]); 
-  //     point_y.at<float>(i,0) += std::get<1>(weight).at<float>(j)*thinPlateSpline(src_landmarks[j], src_landmarks[i]);
-  //   }
-  //   point_x.at<float>(i,0) += src_landmarks[i].x;
-  //   point_y.at<float>(i,0) += src_landmarks[i].y;
-  // }
-  
-  //  std::cout<< "weight delta_x" << point_x << std::endl;
-  //  std::cout<< "weight delta_y" << point_y << std::endl;
-  //  return std::make_tuple(point_x, point_y);
+  ABSL_LOG(INFO) << "Shutting down.";
+  if (writer.isOpened()) writer.release();
+  MP_RETURN_IF_ERROR(graph.CloseInputStream(kInputStream));
+  return graph.WaitUntilDone();
 }
-
 
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   absl::ParseCommandLine(argc, argv);
-
-  Mat myInputImg = imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/ms.jpg");
-  Mat myInputImg2 = imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/jehoon.jpg");
-  mediapipe::NormalizedLandmarkList landmarks;
-  mediapipe::NormalizedLandmarkList landmarks2;
-  RunMPPGraph(myInputImg, landmarks);
-  RunMPPGraph(myInputImg2, landmarks2);
-  std::vector<Point2f> p1;
-  std::vector<Point2f> p2;
-  
-  for (int i = 0; i < landmarks.landmark_size(); i++){
-    p1.push_back(Point2f((float)landmarks.landmark(i).x()*myInputImg.cols,(float)landmarks.landmark(i).y()*myInputImg.rows));
-    p2.push_back(Point2f((float)landmarks2.landmark(i).x()*myInputImg2.cols,(float)landmarks2.landmark(i).y()*myInputImg2.rows));
-    // 첫 번째 이미지에 랜드마크 빨간 점으로 표시
-    //circle(myInputImg, Point(landmarks.landmark(i).x()*myInputImg.cols, landmarks.landmark(i).y()*myInputImg.rows), 1, Scalar(0, 0, 255), - 1);
-    // 두 번째 이미지에 랜드마크 파란 점으로 표시
-    circle(myInputImg2, Point(landmarks2.landmark(i).x()*myInputImg2.cols, landmarks2.landmark(i).y()*myInputImg2.rows), 1, Scalar(255, 0, 0), - 1);
+  absl::Status run_status = RunMPPGraph();
+  if (!run_status.ok()) {
+    ABSL_LOG(ERROR) << "Failed to run the graph: " << run_status.message();
+    return EXIT_FAILURE;
+  } else {
+    ABSL_LOG(INFO) << "Success!";
   }
-  //std::cout<<p2<<std::endl;
-
-  Mat H = findHomography(p1, p2);
-  Mat imgwarp;
-  warpPerspective(myInputImg, imgwarp, H, Size(myInputImg.cols*1.5 , myInputImg.rows *1.5));
-  std::vector<Point2f> pointwarp;
-  perspectiveTransform(p1, pointwarp, H); 
-  for (int i = 0; i < landmarks.landmark_size(); i++){
-    // 두 번째 이미지에 첫번째 랜드마크 빨간 점으로 표시
-    circle(myInputImg2, pointwarp[i], 1, Scalar(0, 0, 225), - 1);
-  }
-
-  auto weight = getRBFWeight(pointwarp, p2);
-  Mat dst(myInputImg.size(), myInputImg.type());
-  
-  auto [map_x, map_y] = RBF(pointwarp, p2, imgwarp, weight);
-  remap(imgwarp, dst, map_x, map_y, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
-  //imshow("img0", myInputImg);
-  imshow("img1", imgwarp);
-  imshow("img2", myInputImg2);
-  imshow("img3", dst);
-  waitKey();
-  
   return EXIT_SUCCESS;
 }
