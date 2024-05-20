@@ -94,7 +94,6 @@ cc_library(
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/log:absl_log",
         "@wxwidgets//:wxwidgets",
-
     ],
 )
 

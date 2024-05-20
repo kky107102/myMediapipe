@@ -1,5 +1,6 @@
 workspace(name = "mediapipe")
 
+<<<<<<< HEAD
 new_local_repository(
     name = "wxwidgets",
     path = "C:/Users/yeon/mediapipe_repo/mediapipe/wxWidgets",
@@ -23,6 +24,10 @@ http_archive(
     strip_prefix = "mediapipe-0.8.10",
 )
 
+=======
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+>>>>>>> d36f54271320e59a0c582f44c87f9fa19e19821e
 # Protobuf expects an //external:python_headers target
 bind(
     name = "python_headers",
