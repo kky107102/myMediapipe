@@ -57,8 +57,8 @@ cc_library(
 )
 
 cc_library(
-    name = "face_deformation_main",
-    srcs = ["face_deformation_main.cc"],
+    name = "face_deformation_main_3d",
+    srcs = ["face_deformation_main_3d.cc"],
     deps = [
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",
@@ -73,6 +73,28 @@ cc_library(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/log:absl_log",
+    ],
+)
+
+cc_library(
+    name = "face_deformation_main_2d",
+    srcs = ["face_deformation_main_2d.cc"],
+    deps = [
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework/formats:image_frame",
+        "//mediapipe/framework/formats:image_frame_opencv",
+        "//mediapipe/framework/port:file_helpers",
+        "//mediapipe/framework/port:opencv_highgui",
+        "//mediapipe/framework/port:opencv_imgproc",
+        "//mediapipe/framework/port:opencv_video",
+        "//mediapipe/framework/port:parse_text_proto",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/util:resource_util",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/log:absl_log",
+        "@wxwidgets//:wxwidgets",
+
     ],
 )
 

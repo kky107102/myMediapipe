@@ -1,6 +1,27 @@
 workspace(name = "mediapipe")
 
+new_local_repository(
+    name = "wxwidgets",
+    path = "C:/Users/yeon/mediapipe_repo/mediapipe/wxWidgets",
+    build_file_content = """
+cc_library(
+    name = "wxwidgets",
+    hdrs = glob(["include/**/*"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+    linkopts = ["-L/path/to/wxWidgets/lib -lwx_baseu-3.1 -lwx_gtk3u_core-3.1"],
+    copts = ["-I/path/to/wxWidgets/include"],
+)
+    """
+)
+
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "mediapipe",
+    urls = ["https://github.com/google/mediapipe/archive/v0.8.10.tar.gz"],
+    strip_prefix = "mediapipe-0.8.10",
+)
 
 # Protobuf expects an //external:python_headers target
 bind(

@@ -126,6 +126,12 @@ float thinPlateSpline(const Point2f& p1, const Point2f& p2) {
   return d*d*log(d);
 }
 
+float gaussian(const Point2f& p1, const Point2f& p2){
+  auto d = sqrt(pow(p1.x-p2.x, 2) + pow(p1.y-p2.y, 2));
+  auto sigma = 2;
+  return exp(-d / (2 * sigma * sigma));
+}
+
 std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, const std::vector<Point2f>& model_landmarks) {
   int lmsize = src_landmarks.size();
   Mat del_x(lmsize, 1, CV_32F);
@@ -139,6 +145,7 @@ std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, cons
     del_y.at<float>(i) = model_landmarks[i].y - src_landmarks[i].y;
     for (int j = 0; j < lmsize; j++){
       matrix.at<float>(i,j) = thinPlateSpline(src_landmarks[j], src_landmarks[i]);
+      //matrix.at<float>(i,j) = gaussian(src_landmarks[j], src_landmarks[i]);
     }
   }
 
@@ -156,6 +163,8 @@ std::tuple<Mat,Mat> RBF(const std::vector<Point2f>& src_landmarks, const Mat& sr
       for (int k = 0; k < src_landmarks.size(); k++){
         map_x.at<float>(row,col) -= std::get<0>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(row,col)); 
         map_y.at<float>(row,col) -= std::get<1>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(col,row));
+        //map_x.at<float>(row,col) -= std::get<0>(weight).at<float>(k)*gaussian(src_landmarks[k], Point2f(row,col)); 
+        //map_y.at<float>(row,col) -= std::get<1>(weight).at<float>(k)*gaussian(src_landmarks[k], Point2f(col,row));
       }
       map_x.at<float>(row,col) += col;
       map_y.at<float>(row,col) += row;
@@ -164,12 +173,14 @@ std::tuple<Mat,Mat> RBF(const std::vector<Point2f>& src_landmarks, const Mat& sr
   return std::make_tuple(map_x, map_y);
 }
 
+
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   absl::ParseCommandLine(argc, argv);
 
   Mat srcImg = imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/ms.jpg");
-  Mat modelImg = imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/jehoon.jpg");
+  Mat modelImg = imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/jh.jpg");
+  resize(modelImg,modelImg, Size(), 0.5, 0.5, INTER_LINEAR);
   mediapipe::NormalizedLandmarkList landmarks;
   mediapipe::NormalizedLandmarkList landmarks2;
   RunMPPGraph(srcImg, landmarks);
@@ -185,6 +196,7 @@ int main(int argc, char** argv) {
     // 두 번째 이미지에 랜드마크 파란 점으로 표시
     circle(modelImg, Point(landmarks2.landmark(i).x()*modelImg.cols, landmarks2.landmark(i).y()*modelImg.rows), 1, Scalar(255, 0, 0), - 1);
   }
+
 //   Mat H = findHomography(p1, p2);
 //   Mat imgwarp;
 //   warpPerspective(srcImg, imgwarp, H, Size(srcImg.cols*1.5 , srcImg.rows *1.5));
@@ -207,15 +219,16 @@ int main(int argc, char** argv) {
     circle(modelImg, p3[i], 1, Scalar(0, 0, 225), - 1);
   }
 
-  Mat dst(srcImg.size() , srcImg.type());  
+  Mat dst(srcImg.size() , srcImg.type());
   auto weight = getRBFWeight(p3, p2);
   auto [map_x1, map_y2] = RBF(p3, similarityImg, weight);
   remap(similarityImg, dst, map_x1, map_y2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
 
-  imshow("img0", similarityImg);
-  //imshow("img1", imgwarp);
-  imshow("img2", modelImg);
-  imshow("img3", dst);
+  imshow("similarity", similarityImg);
+  //imshow("warped", imgwarp);
+  imshow("model", modelImg);  
+  imshow("Similarity + RBF(gaussian)", dst); 
+  //imwrite("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/gaussian_sigma_2.5_jh-dr.jpg", dst);
   waitKey();
 
   return EXIT_SUCCESS;
