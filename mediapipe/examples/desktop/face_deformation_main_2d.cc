@@ -15,7 +15,8 @@
 // An example of sending OpenCV webcam frames into a MediaPipe graph.
 #include <cstdlib>
 #include <cmath>
-
+#include <wx/wx.h>
+#include <wx/slider.h>
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/log/absl_log.h"
