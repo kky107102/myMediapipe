@@ -1,21 +1,5 @@
 workspace(name = "mediapipe")
 
-<<<<<<< HEAD
-new_local_repository(
-    name = "wxwidgets",
-    path = "C:/Users/yeon/mediapipe_repo/mediapipe/wxWidgets",
-    build_file_content = """
-cc_library(
-    name = "wxwidgets",
-    hdrs = glob(["include/**/*"]),
-    includes = ["include"],
-    visibility = ["//visibility:public"],
-    linkopts = ["-L/path/to/wxWidgets/lib -lwx_baseu-3.1 -lwx_gtk3u_core-3.1"],
-    copts = ["-I/path/to/wxWidgets/include"],
-)
-    """
-)
-
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
@@ -24,10 +8,6 @@ http_archive(
     strip_prefix = "mediapipe-0.8.10",
 )
 
-=======
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
->>>>>>> d36f54271320e59a0c582f44c87f9fa19e19821e
 # Protobuf expects an //external:python_headers target
 bind(
     name = "python_headers",
@@ -361,6 +341,13 @@ http_archive(
     build_file_content = all_content,
     strip_prefix = "opencv-3.4.10",
     urls = ["https://github.com/opencv/opencv/archive/3.4.10.tar.gz"],
+)
+
+http_archive(
+    name = "glfw",
+    build_file_content = all_content,
+    strip_prefix = "glfw-3.3.4",
+    urls = ["https://github.com/glfw/glfw/archive/refs/tags/3.3.4.zip"],
 )
 
 new_local_repository(

@@ -15,8 +15,7 @@
 // An example of sending OpenCV webcam frames into a MediaPipe graph.
 #include <cstdlib>
 #include <cmath>
-#include <wx/wx.h>
-#include <wx/slider.h>
+#include <iostream>
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/log/absl_log.h"
@@ -36,6 +35,7 @@
 #include "mediapipe/framework/formats/landmark.pb.h"
 
 using namespace cv;
+
 constexpr char kInputStream[] = "input_video";
 constexpr char kOutputStream[] = "output_video";
 constexpr char kWindowName[] = "MediaPipe";
@@ -124,7 +124,7 @@ std::tuple<Mat,Mat> SLR(const Mat& dstImg, const Mat& coeff){
 float thinPlateSpline(const Point2f& p1, const Point2f& p2) {
   auto d = sqrt(pow(p1.x-p2.x, 2) + pow(p1.y-p2.y, 2));
   if (d == 0) return 1;
-  return d*d*log(d);
+  return d*d*std::log(d);
 }
 
 float gaussian(const Point2f& p1, const Point2f& p2){
@@ -174,28 +174,47 @@ std::tuple<Mat,Mat> RBF(const std::vector<Point2f>& src_landmarks, const Mat& sr
   return std::make_tuple(map_x, map_y);
 }
 
+const int alpha_slider_max = 10;
+int alpha_slider;
+double alpha;
+double beta;
 
+Mat src1;
+Mat src2;
+Mat dst;
+Mat blend;
+
+static void on_trackbar( int, void* )
+{
+ alpha = (double) alpha_slider/alpha_slider_max ;
+ beta = ( 1.0 - alpha );
+ addWeighted( dst, alpha, src1, beta, 0.0, blend);
+ imshow( "Blend", blend );
+}
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   absl::ParseCommandLine(argc, argv);
+  for( int i=0;i<argc;i++) printf("%s\n",argv[i]);
 
-  Mat srcImg = imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/ms.jpg");
-  Mat modelImg = imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/jh.jpg");
-  resize(modelImg,modelImg, Size(), 0.5, 0.5, INTER_LINEAR);
+  Mat srcImg = imread(argv[2]);
+  src2 = imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/jh.jpg");
+  resize(src2,src2, Size(), 0.5, 0.5, INTER_LINEAR);
+  
   mediapipe::NormalizedLandmarkList landmarks;
   mediapipe::NormalizedLandmarkList landmarks2;
   RunMPPGraph(srcImg, landmarks);
-  RunMPPGraph(modelImg, landmarks2);
+  RunMPPGraph(src2, landmarks2);
+
   std::vector<Point2f> p1;
   std::vector<Point2f> p2;
 
   for (int i = 0; i < landmarks.landmark_size(); i++){
     p1.push_back(Point2f((float)landmarks.landmark(i).x()*srcImg.cols,(float)landmarks.landmark(i).y()*srcImg.rows));
-    p2.push_back(Point2f((float)landmarks2.landmark(i).x()*modelImg.cols,(float)landmarks2.landmark(i).y()*modelImg.rows));
+    p2.push_back(Point2f((float)landmarks2.landmark(i).x()*src2.cols,(float)landmarks2.landmark(i).y()*src2.rows));
     // 첫 번째 이미지에 랜드마크 빨간 점으로 표시
     //circle(srcImg, Point(landmarks.landmark(i).x()*srcImg.cols, landmarks.landmark(i).y()*srcImg.rows), 1, Scalar(0, 0, 255), - 1);
     // 두 번째 이미지에 랜드마크 파란 점으로 표시
-    circle(modelImg, Point(landmarks2.landmark(i).x()*modelImg.cols, landmarks2.landmark(i).y()*modelImg.rows), 1, Scalar(255, 0, 0), - 1);
+    //circle(src2, Point(landmarks2.landmark(i).x()*src2.cols, landmarks2.landmark(i).y()*src2.rows), 1, Scalar(255, 0, 0), - 1);
   }
 
 //   Mat H = findHomography(p1, p2);
@@ -205,30 +224,32 @@ int main(int argc, char** argv) {
 //   perspectiveTransform(p1, pointwarp, H); 
 //   for (int i = 0; i < landmarks.landmark_size(); i++){
 //     // 두 번째 이미지에 첫번째 랜드마크 빨간 점으로 표시
-//     circle(modelImg, pointwarp[i], 1, Scalar(0, 0, 225), - 1);
+//     circle(src2, pointwarp[i], 1, Scalar(0, 0, 225), - 1);
 //   }
   auto coeff = getLinearCoeff(p2, p1); //?
-  auto [map_x, map_y] = SLR(modelImg, coeff);
-  Mat similarityImg(srcImg.size() , srcImg.type());
-  remap(srcImg, similarityImg, map_x, map_y, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
+  auto [map_x, map_y] = SLR(src2, coeff);
+  //Mat src1(srcImg.size() , srcImg.type());
+  remap(srcImg, src1, map_x, map_y, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
+
 
   mediapipe::NormalizedLandmarkList landmarks3;
-  RunMPPGraph(similarityImg, landmarks3);
+  RunMPPGraph(src1, landmarks3);
   std::vector<Point2f> p3;
   for (int i = 0; i < landmarks.landmark_size(); i++){
-    p3.push_back(Point2f((float)landmarks3.landmark(i).x()*similarityImg.cols,(float)landmarks3.landmark(i).y()*similarityImg.rows));
-    circle(modelImg, p3[i], 1, Scalar(0, 0, 225), - 1);
+    p3.push_back(Point2f((float)landmarks3.landmark(i).x()*src1.cols,(float)landmarks3.landmark(i).y()*src1.rows));
+    //circle(src2, p3[i], 1, Scalar(0, 0, 225), - 1);
   }
 
-  Mat dst(srcImg.size() , srcImg.type());
+  //dst(srcImg.size() , srcImg.type());
   auto weight = getRBFWeight(p3, p2);
-  auto [map_x1, map_y2] = RBF(p3, similarityImg, weight);
-  remap(similarityImg, dst, map_x1, map_y2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
+  auto [map_x1, map_y2] = RBF(p3, src1, weight);
+  remap(src1, dst, map_x1, map_y2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
 
-  imshow("similarity", similarityImg);
+  imshow("similarity", src1);
   //imshow("warped", imgwarp);
-  imshow("model", modelImg);  
-  imshow("Similarity + RBF(gaussian)", dst); 
+  imshow("model", src2);  
+  //imshow("Similarity + RBF(gaussian)", dst); 
+  createTrackbar( "g_sigma", "similarity", &alpha_slider, alpha_slider_max, on_trackbar );
   //imwrite("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/gaussian_sigma_2.5_jh-dr.jpg", dst);
   waitKey();
 
