@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
+#include <tuple>
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/log/absl_log.h"
@@ -37,7 +38,7 @@
 using namespace cv;
 
 constexpr char kInputStream[] = "input_video";
-constexpr char kOutputStream[] = "output_video";
+//constexpr char kOutputStream[] = "output_video";
 constexpr char kWindowName[] = "MediaPipe";
 constexpr char kLandmarksStream[] = "single_face_landmarks";
 constexpr char kROIStream[] = "face_rect_from_landmarks";
@@ -145,8 +146,8 @@ std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, cons
     del_x.at<float>(i) = model_landmarks[i].x - src_landmarks[i].x;
     del_y.at<float>(i) = model_landmarks[i].y - src_landmarks[i].y;
     for (int j = 0; j < lmsize; j++){
-      matrix.at<float>(i,j) = thinPlateSpline(src_landmarks[j], src_landmarks[i]);
-      //matrix.at<float>(i,j) = gaussian(src_landmarks[j], src_landmarks[i]);
+      //matrix.at<float>(i,j) = thinPlateSpline(src_landmarks[j], src_landmarks[i]);
+      matrix.at<float>(i,j) = gaussian(src_landmarks[j], src_landmarks[i]);
     }
   }
 
@@ -157,24 +158,27 @@ std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, cons
 }
 
 std::tuple<Mat,Mat> RBF(const std::vector<Point2f>& src_landmarks, const Mat& srcImg, const std::tuple<Mat,Mat>& weight){
-  Mat map_x = Mat::zeros(srcImg.size(), CV_32F);
-  Mat map_y = Mat::zeros(srcImg.size(), CV_32F);
-  for (int row = 0; row < srcImg.rows; row++){
-    for (int col = 0; col < srcImg.cols; col++){
+  int ratio=2;
+  Mat map_x = Mat::zeros(srcImg.rows/ratio,srcImg.cols/ratio, CV_32F);
+  Mat map_y = Mat::zeros(srcImg.rows/ratio,srcImg.cols/ratio, CV_32F);
+  for (int row = 0; row < map_x.rows; row++){
+    for (int col = 0; col < map_x.cols; col++){
       for (int k = 0; k < src_landmarks.size(); k++){
-        map_x.at<float>(row,col) -= std::get<0>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(row,col)); 
-        map_y.at<float>(row,col) -= std::get<1>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(col,row));
-        //map_x.at<float>(row,col) -= std::get<0>(weight).at<float>(k)*gaussian(src_landmarks[k], Point2f(row,col)); 
-        //map_y.at<float>(row,col) -= std::get<1>(weight).at<float>(k)*gaussian(src_landmarks[k], Point2f(col,row));
+        //map_x.at<float>(row,col) -= std::get<0>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(row*ratio,col*ratio)); 
+        //map_y.at<float>(row,col) -= std::get<1>(weight).at<float>(k)*thinPlateSpline(src_landmarks[k], Point2f(col*ratio,row*ratio));
+        map_x.at<float>(row,col) -= std::get<0>(weight).at<float>(k)*gaussian(src_landmarks[k], Point2f(row*ratio,col*ratio)); 
+        map_y.at<float>(row,col) -= std::get<1>(weight).at<float>(k)*gaussian(src_landmarks[k], Point2f(col*ratio,row*ratio));
       }
-      map_x.at<float>(row,col) += col;
-      map_y.at<float>(row,col) += row;
+      map_x.at<float>(row,col) += col*ratio;
+      map_y.at<float>(row,col) += row*ratio;
     }
   }
+  resize(map_x,map_x,srcImg.size());
+  resize(map_y,map_y,srcImg.size());
   return std::make_tuple(map_x, map_y);
 }
 
-const int alpha_slider_max = 10;
+const int alpha_slider_max = 100;
 int alpha_slider;
 double alpha;
 double beta;
@@ -182,14 +186,22 @@ double beta;
 Mat src1;
 Mat src2;
 Mat dst;
-Mat blend;
+Mat map_x2;
+Mat map_y2;
 
-static void on_trackbar( int, void* )
-{
- alpha = (double) alpha_slider/alpha_slider_max ;
- beta = ( 1.0 - alpha );
- addWeighted( dst, alpha, src1, beta, 0.0, blend);
- imshow( "Blend", blend );
+static void on_trackbar( int, void* ){
+  alpha = (double) alpha_slider/alpha_slider_max ;
+  beta = ( 1.0 - alpha );
+  Mat map_x3(src1.size(),CV_32FC1);
+  Mat map_y3(src1.size(),CV_32FC1);
+  for (int i = 0; i < src1.rows; i++){
+    for (int j = 0; j < src1.cols; j++){
+    map_x3.at<float>(i,j) = alpha * map_x2.at<float>(i,j) + beta * j;
+    map_y3.at<float>(i,j) = alpha * map_y2.at<float>(i,j) + beta * i;
+    }
+  }
+  remap(src1, dst, map_x3, map_y3, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
+  imshow( "Blend", dst );
 }
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
@@ -197,8 +209,13 @@ int main(int argc, char** argv) {
   for( int i=0;i<argc;i++) printf("%s\n",argv[i]);
 
   Mat srcImg = imread(argv[2]);
-  src2 = imread("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/jh.jpg");
-  resize(src2,src2, Size(), 0.5, 0.5, INTER_LINEAR);
+  src2 = imread(argv[3]);
+  //resize(src2,src2, Size(), 0.5, 0.5, INTER_LINEAR);
+  
+  imshow("src", srcImg);
+  //imshow("warped", imgwarp);
+  imshow("model", src2);  
+  waitKey(1);
   
   mediapipe::NormalizedLandmarkList landmarks;
   mediapipe::NormalizedLandmarkList landmarks2;
@@ -242,14 +259,13 @@ int main(int argc, char** argv) {
 
   //dst(srcImg.size() , srcImg.type());
   auto weight = getRBFWeight(p3, p2);
-  auto [map_x1, map_y2] = RBF(p3, src1, weight);
-  remap(src1, dst, map_x1, map_y2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
-
-  imshow("similarity", src1);
-  //imshow("warped", imgwarp);
-  imshow("model", src2);  
-  //imshow("Similarity + RBF(gaussian)", dst); 
-  createTrackbar( "g_sigma", "similarity", &alpha_slider, alpha_slider_max, on_trackbar );
+  std::tuple<Mat,Mat> result = RBF(p3, src1, weight);
+  map_x2 = std::get<0>(result);
+  map_y2 = std::get<1>(result);
+  //remap(src1, dst, map_x2, map_y2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
+  dst = src1.clone();
+  imshow("Blend", dst); 
+  createTrackbar( "g_sigma", "Blend", &alpha_slider, alpha_slider_max, on_trackbar );
   //imwrite("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/gaussian_sigma_2.5_jh-dr.jpg", dst);
   waitKey();
 
