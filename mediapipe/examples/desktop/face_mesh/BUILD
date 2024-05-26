@@ -35,19 +35,19 @@ cc_binary(
 )
 
 cc_binary(
-    name = "face_deformation_2d",
+    name = "face_deformation_gaussian",
     data = ["//mediapipe/modules/face_landmark:face_landmark_with_attention.tflite"],
     deps = [
-        "//mediapipe/examples/desktop:face_deformation_main_2d",
+        "//mediapipe/examples/desktop:face_deformation_main_gaussian",
         "//mediapipe/graphs/face_mesh:desktop_live_calculators",
     ],
 )
 
 cc_binary(
-    name = "face_deformation_3d",
+    name = "face_deformation_thinPlate",
     data = ["//mediapipe/modules/face_landmark:face_landmark_with_attention.tflite"],
     deps = [
-        "//mediapipe/examples/desktop:face_deformation_main_3d",
+        "//mediapipe/examples/desktop:face_deformation_main_thinPlate",
         "//mediapipe/graphs/face_mesh:desktop_live_calculators",
     ],
 )

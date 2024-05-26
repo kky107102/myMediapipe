@@ -57,8 +57,8 @@ cc_library(
 )
 
 cc_library(
-    name = "face_deformation_main_3d",
-    srcs = ["face_deformation_main_3d.cc"],
+    name = "face_deformation_main_thinPlate",
+    srcs = ["face_deformation_main_thinPlate.cc"],
     deps = [
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",
@@ -77,8 +77,8 @@ cc_library(
 )
 
 cc_library(
-    name = "face_deformation_main_2d",
-    srcs = ["face_deformation_main_2d.cc"],
+    name = "face_deformation_main_gaussian",
+    srcs = ["face_deformation_main_gaussian.cc"],
     deps = [
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/formats:image_frame",

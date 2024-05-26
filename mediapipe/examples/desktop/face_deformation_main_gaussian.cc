@@ -52,6 +52,7 @@ ABSL_FLAG(std::string, output_video_path, "",
           "Full path of where to save result (.mp4 only). "
           "If not provided, show result in a window.");
 
+// mediapipe 그래프 호출
 absl::Status RunMPPGraph(Mat img, mediapipe::NormalizedLandmarkList& output_landmarks) {
   std::string calculator_graph_config_contents;
   MP_RETURN_IF_ERROR(mediapipe::file::GetContents(
@@ -65,11 +66,10 @@ absl::Status RunMPPGraph(Mat img, mediapipe::NormalizedLandmarkList& output_land
   ABSL_LOG(INFO) << "Initialize the calculator graph.";
   mediapipe::CalculatorGraph graph;
   MP_RETURN_IF_ERROR(graph.Initialize(config));
-
   ABSL_LOG(INFO) << "Start running the calculator graph.";
+  // output: 비디오 대신 face landmarks을 return
   MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller_single_landmark, graph.AddOutputStreamPoller(kLandmarksStream));
   MP_RETURN_IF_ERROR(graph.StartRun({}));
-
   ABSL_LOG(INFO) << "Start grabbing and processing frames.";
   cv::Mat inputImg;
   cv::cvtColor(img, inputImg, cv::COLOR_BGR2RGB);
@@ -78,7 +78,6 @@ absl::Status RunMPPGraph(Mat img, mediapipe::NormalizedLandmarkList& output_land
         mediapipe::ImageFrame::kDefaultAlignmentBoundary);
   cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
   inputImg.copyTo(input_frame_mat);
-
   size_t frame_timestamp_us =
       (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
   MP_RETURN_IF_ERROR(graph.AddPacketToInputStream(
@@ -91,12 +90,13 @@ absl::Status RunMPPGraph(Mat img, mediapipe::NormalizedLandmarkList& output_land
   return graph.WaitUntilDone();
 }     
 
+// model img와 src img의 landmark의 위치 세팅
+// 을 위한 coefficient 행렬 구하기
 Mat getLinearCoeff(const std::vector<Point2f>& src_landmarks, const std::vector<Point2f>& model_landmarks){
   int lmsize = src_landmarks.size();
   Mat modelPoints(lmsize, 2, CV_32F);
   Mat srcPoints(lmsize, 3, CV_32F);
   Mat coeff(2, 3, CV_32F);
-
   for (int i = 0; i < lmsize; i++){
     modelPoints.at<float>(i,0) = model_landmarks[i].x;
     modelPoints.at<float>(i,1) = model_landmarks[i].y;
@@ -104,15 +104,13 @@ Mat getLinearCoeff(const std::vector<Point2f>& src_landmarks, const std::vector<
     srcPoints.at<float>(i,1) = src_landmarks[i].y;
     srcPoints.at<float>(i,2) = (float)1;
   }
-  
   solve(srcPoints, modelPoints, coeff, DECOMP_SVD);
   return coeff;
 }
-
+// 받아온 행렬값으로 scaling, translation 연산
 std::tuple<Mat,Mat> SLR(const Mat& dstImg, const Mat& coeff){
   Mat map_x = Mat::zeros(dstImg.size(), CV_32F);
   Mat map_y = Mat::zeros(dstImg.size(), CV_32F);
-  
   for (int row = 0; row < dstImg.rows; row++){
     for (int col = 0; col < dstImg.cols; col++){
       map_x.at<float>(row,col) += (col * coeff.at<float>(0,0) + row * coeff.at<float>(1,0) + coeff.at<float>(2,0)); //x
@@ -122,18 +120,22 @@ std::tuple<Mat,Mat> SLR(const Mat& dstImg, const Mat& coeff){
   return std::make_tuple(map_x, map_y);
 }
 
+// RBF(Radial Basis Funtion) 커널 선택
+// 왜곡이 극단적이라 효과가 눈에 띄지만 배경 왜곡이 심함
 float thinPlateSpline(const Point2f& p1, const Point2f& p2) {
   auto d = sqrt(pow(p1.x-p2.x, 2) + pow(p1.y-p2.y, 2));
   if (d == 0) return 1;
   return d*d*std::log(d);
 }
-
+// 자연스러운 왜곡
 float gaussian(const Point2f& p1, const Point2f& p2){
   auto d = sqrt(pow(p1.x-p2.x, 2) + pow(p1.y-p2.y, 2));
   auto sigma = 2;
   return exp(-d / (2 * sigma * sigma));
 }
 
+// scr landmark의 분포를 model landmark로 근사
+// 을 위해 dx, dy 기반으로 weight 계산
 std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, const std::vector<Point2f>& model_landmarks) {
   int lmsize = src_landmarks.size();
   Mat del_x(lmsize, 1, CV_32F);
@@ -141,7 +143,6 @@ std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, cons
   Mat matrix(lmsize, lmsize, CV_32F);
   Mat weight_x(lmsize,1,CV_32F);
   Mat weight_y(lmsize,1,CV_32F);
-
   for(int i = 0; i < lmsize; i++){
     del_x.at<float>(i) = model_landmarks[i].x - src_landmarks[i].x;
     del_y.at<float>(i) = model_landmarks[i].y - src_landmarks[i].y;
@@ -150,13 +151,11 @@ std::tuple<Mat,Mat> getRBFWeight(const std::vector<Point2f>& src_landmarks, cons
       matrix.at<float>(i,j) = gaussian(src_landmarks[j], src_landmarks[i]);
     }
   }
-
   solve(matrix, del_x, weight_x);  
   solve(matrix, del_y, weight_y);
-
   return std::make_tuple(weight_x, weight_y);
 }
-
+// 받아온 weight값으로 src이미지 변환 map 계산
 std::tuple<Mat,Mat> RBF(const std::vector<Point2f>& src_landmarks, const Mat& srcImg, const std::tuple<Mat,Mat>& weight){
   int ratio=2;
   Mat map_x = Mat::zeros(srcImg.rows/ratio,srcImg.cols/ratio, CV_32F);
@@ -178,17 +177,17 @@ std::tuple<Mat,Mat> RBF(const std::vector<Point2f>& src_landmarks, const Mat& sr
   return std::make_tuple(map_x, map_y);
 }
 
+// GUI를 위한 변수 설정
 const int alpha_slider_max = 100;
 int alpha_slider;
 double alpha;
 double beta;
-
 Mat src1;
-Mat src2;
 Mat dst;
 Mat map_x2;
 Mat map_y2;
-
+ 
+// Trackbar에 대한 콜백 함수
 static void on_trackbar( int, void* ){
   alpha = (double) alpha_slider/alpha_slider_max ;
   beta = ( 1.0 - alpha );
@@ -203,17 +202,17 @@ static void on_trackbar( int, void* ){
   remap(src1, dst, map_x3, map_y3, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
   imshow( "Blend", dst );
 }
+
+// main
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   absl::ParseCommandLine(argc, argv);
   for( int i=0;i<argc;i++) printf("%s\n",argv[i]);
 
   Mat srcImg = imread(argv[2]);
-  src2 = imread(argv[3]);
-  //resize(src2,src2, Size(), 0.5, 0.5, INTER_LINEAR);
+  Mat src2 = imread(argv[3]);
   
   imshow("src", srcImg);
-  //imshow("warped", imgwarp);
   imshow("model", src2);  
   waitKey(1);
   
@@ -221,7 +220,6 @@ int main(int argc, char** argv) {
   mediapipe::NormalizedLandmarkList landmarks2;
   RunMPPGraph(srcImg, landmarks);
   RunMPPGraph(src2, landmarks2);
-
   std::vector<Point2f> p1;
   std::vector<Point2f> p2;
 
@@ -234,40 +232,38 @@ int main(int argc, char** argv) {
     //circle(src2, Point(landmarks2.landmark(i).x()*src2.cols, landmarks2.landmark(i).y()*src2.rows), 1, Scalar(255, 0, 0), - 1);
   }
 
-//   Mat H = findHomography(p1, p2);
-//   Mat imgwarp;
-//   warpPerspective(srcImg, imgwarp, H, Size(srcImg.cols*1.5 , srcImg.rows *1.5));
-//   std::vector<Point2f> pointwarp;
-//   perspectiveTransform(p1, pointwarp, H); 
-//   for (int i = 0; i < landmarks.landmark_size(); i++){
-//     // 두 번째 이미지에 첫번째 랜드마크 빨간 점으로 표시
-//     circle(src2, pointwarp[i], 1, Scalar(0, 0, 225), - 1);
-//   }
-  auto coeff = getLinearCoeff(p2, p1); //?
+  // src와 model 이미지의 랜드마크 분포 비교를 위해 (src이미지에 대한) transformation 과정 : srcImg -> src1
+  auto coeff = getLinearCoeff(p2, p1); 
   auto [map_x, map_y] = SLR(src2, coeff);
-  //Mat src1(srcImg.size() , srcImg.type());
   remap(srcImg, src1, map_x, map_y, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
-
-
+  // transform된 소스 이미지(src1)에 대해 landmark를 다시 계산
   mediapipe::NormalizedLandmarkList landmarks3;
   RunMPPGraph(src1, landmarks3);
   std::vector<Point2f> p3;
   for (int i = 0; i < landmarks.landmark_size(); i++){
     p3.push_back(Point2f((float)landmarks3.landmark(i).x()*src1.cols,(float)landmarks3.landmark(i).y()*src1.rows));
-    //circle(src2, p3[i], 1, Scalar(0, 0, 225), - 1);
   }
 
-  //dst(srcImg.size() , srcImg.type());
+  // src1의 landmark의 분포를 model의 landmark의 분포로 근사
   auto weight = getRBFWeight(p3, p2);
   std::tuple<Mat,Mat> result = RBF(p3, src1, weight);
   map_x2 = std::get<0>(result);
   map_y2 = std::get<1>(result);
-  //remap(src1, dst, map_x2, map_y2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0,0,0));
+
+  // 결과 이미지 - 처음 이미지는 before이므로 src1 img를 show
   dst = src1.clone();
   imshow("Blend", dst); 
+  // Trackbar로 map의 값을 조정
   createTrackbar( "g_sigma", "Blend", &alpha_slider, alpha_slider_max, on_trackbar );
-  //imwrite("C:/Users/yeon/mediapipe_repo/mediapipe/mediapipe/examples/desktop/gaussian_sigma_2.5_jh-dr.jpg", dst);
   waitKey();
 
   return EXIT_SUCCESS;
 }
+
+// 명령 위치
+// ~/mediapipe_repo/mediapipe
+// 빌드 명령
+// bazel build -c opt --define MEDIAPIPE_DISABLE_GPU=1 --action_env PYTHON_BIN_PATH="C://Python//python.exe" mediapipe/examples/desktop/face_mesh:face_deformation_gaussian
+// 실행 명령(예시), .pptxt 뒤는 순서대로 src이미지 경로, model이미지 경로
+// GLOG_logtostderr=1 bazel-bin/mediapipe/examples/desktop/face_mesh/face_deformation_gaussian --calculator_graph_config_file=mediapipe/graphs/face_mesh/face_mesh_desktop_live.pbtxt C:/ms.jpg C:/ys.jpg
+// hm -> ys
