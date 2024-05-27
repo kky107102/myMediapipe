@@ -265,5 +265,6 @@ int main(int argc, char** argv) {
 // 빌드 명령
 // bazel build -c opt --define MEDIAPIPE_DISABLE_GPU=1 --action_env PYTHON_BIN_PATH="C://Python//python.exe" mediapipe/examples/desktop/face_mesh:face_deformation_gaussian
 // 실행 명령(예시), .pptxt 뒤는 순서대로 src이미지 경로, model이미지 경로
-// GLOG_logtostderr=1 bazel-bin/mediapipe/examples/desktop/face_mesh/face_deformation_gaussian --calculator_graph_config_file=mediapipe/graphs/face_mesh/face_mesh_desktop_live.pbtxt C:/ms.jpg C:/ys.jpg
+// GLOG_logtostderr=1 bazel-bin/mediapipe/examples/desktop/face_mesh/face_deformation_gaussian --calculator_graph_config_file=mediapipe/graphs/face_mesh/face_mesh_desktop_live.pbtxt C:/dh.jpg C:/ya.jpg
+
 // hm -> ys

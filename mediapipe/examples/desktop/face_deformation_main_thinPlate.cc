@@ -242,6 +242,8 @@ int main(int argc, char** argv) {
   std::vector<Point2f> p3;
   for (int i = 0; i < landmarks.landmark_size(); i++){
     p3.push_back(Point2f((float)landmarks3.landmark(i).x()*src1.cols,(float)landmarks3.landmark(i).y()*src1.rows));
+    //circle(src2, Point(landmarks3.landmark(i).x()*src2.cols, landmarks3.landmark(i).y()*src2.rows), 1, Scalar(0, 0, 255), - 1);
+  
   }
 
   // src1의 landmark의 분포를 model의 landmark의 분포로 근사

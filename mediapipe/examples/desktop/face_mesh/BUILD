@@ -26,15 +26,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "tracking",
-    data = ["//mediapipe/modules/face_landmark:face_landmark_with_attention.tflite"],
-    deps = [
-        "//mediapipe/examples/desktop:tracking",
-        "//mediapipe/graphs/face_mesh:desktop_live_calculators",
-    ],
-)
-
-cc_binary(
     name = "face_deformation_gaussian",
     data = ["//mediapipe/modules/face_landmark:face_landmark_with_attention.tflite"],
     deps = [
