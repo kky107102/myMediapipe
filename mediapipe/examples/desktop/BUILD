@@ -92,7 +92,6 @@ cc_library(
         "//mediapipe/util:resource_util",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
-#        "@widgets//:widgets",
     ],
 )
 
