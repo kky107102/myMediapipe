@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
   Mat src2 = imread(argv[3]);
   
   imshow("src", srcImg);
-  imshow("model", src2);  
+  imshow("model", src2); 
   waitKey(1);
   
   mediapipe::NormalizedLandmarkList landmarks;
@@ -229,7 +229,7 @@ int main(int argc, char** argv) {
     // 첫 번째 이미지에 랜드마크 빨간 점으로 표시
     //circle(srcImg, Point(landmarks.landmark(i).x()*srcImg.cols, landmarks.landmark(i).y()*srcImg.rows), 1, Scalar(0, 0, 255), - 1);
     // 두 번째 이미지에 랜드마크 파란 점으로 표시
-    //circle(src2, Point(landmarks2.landmark(i).x()*src2.cols, landmarks2.landmark(i).y()*src2.rows), 1, Scalar(255, 0, 0), - 1);
+    circle(src2, Point(landmarks2.landmark(i).x()*src2.cols, landmarks2.landmark(i).y()*src2.rows), 1, Scalar(255, 0, 0), - 1);
   }
 
   // src와 model 이미지의 랜드마크 분포 비교를 위해 (src이미지에 대한) transformation 과정 : srcImg -> src1
@@ -242,8 +242,8 @@ int main(int argc, char** argv) {
   std::vector<Point2f> p3;
   for (int i = 0; i < landmarks.landmark_size(); i++){
     p3.push_back(Point2f((float)landmarks3.landmark(i).x()*src1.cols,(float)landmarks3.landmark(i).y()*src1.rows));
+    //circle(src2, Point(landmarks3.landmark(i).x()*src2.cols, landmarks3.landmark(i).y()*src2.rows), 1, Scalar(0, 0, 255), - 1);
   }
-
   // src1의 landmark의 분포를 model의 landmark의 분포로 근사
   auto weight = getRBFWeight(p3, p2);
   std::tuple<Mat,Mat> result = RBF(p3, src1, weight);
