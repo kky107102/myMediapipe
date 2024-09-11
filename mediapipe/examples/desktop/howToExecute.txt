@@ -5,6 +5,7 @@
 이때
 
 7번 - mediaPipe repository 링크를 제 github링크로 수정하여 git clone합니다.
+$ git clone -b kky_face_deformation  https://github.com/kky107102/mediapipe.git
 
 9번 - Hello World! in C++ example 을 실행하는 대신
 
