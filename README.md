@@ -5,11 +5,11 @@ title: Home
 nav_order: 1
 ---
 
-----
+---
 
-**Attention:** *We have moved to
+**Attention:** _We have moved to
 [https://developers.google.com/mediapipe](https://developers.google.com/mediapipe)
-as the primary developer documentation site for MediaPipe as of April 3, 2023.*
+as the primary developer documentation site for MediaPipe as of April 3, 2023._
 
 ![MediaPipe](https://developers.google.com/static/mediapipe/images/home/hero_01_1920.png)
 
@@ -22,8 +22,8 @@ Delight your customers with innovative machine learning features. MediaPipe
 contains everything that you need to customize and deploy to mobile (Android,
 iOS), web, desktop, edge devices, and IoT, effortlessly.
 
-*   [See demos](https://goo.gle/mediapipe-studio)
-*   [Learn more](https://developers.google.com/mediapipe/solutions)
+- [See demos](https://goo.gle/mediapipe-studio)
+- [Learn more](https://developers.google.com/mediapipe/solutions)
 
 ## Get started
 
@@ -52,19 +52,19 @@ solutions code to meet your application needs.
 These libraries and resources provide the core functionality for each MediaPipe
 Solution:
 
-*   **MediaPipe Tasks**: Cross-platform APIs and libraries for deploying
-    solutions. [Learn
-    more](https://developers.google.com/mediapipe/solutions/tasks).
-*   **MediaPipe models**: Pre-trained, ready-to-run models for use with each
-    solution.
+- **MediaPipe Tasks**: Cross-platform APIs and libraries for deploying
+  solutions. [Learn
+  more](https://developers.google.com/mediapipe/solutions/tasks).
+- **MediaPipe models**: Pre-trained, ready-to-run models for use with each
+  solution.
 
 These tools let you customize and evaluate solutions:
 
-*   **MediaPipe Model Maker**: Customize models for solutions with your data.
-    [Learn more](https://developers.google.com/mediapipe/solutions/model_maker).
-*   **MediaPipe Studio**: Visualize, evaluate, and benchmark solutions in your
-    browser. [Learn
-    more](https://developers.google.com/mediapipe/solutions/studio).
+- **MediaPipe Model Maker**: Customize models for solutions with your data.
+  [Learn more](https://developers.google.com/mediapipe/solutions/model_maker).
+- **MediaPipe Studio**: Visualize, evaluate, and benchmark solutions in your
+  browser. [Learn
+  more](https://developers.google.com/mediapipe/solutions/studio).
 
 ### Legacy solutions
 
@@ -91,19 +91,19 @@ Before using MediaPipe Framework, familiarize yourself with the following key
 [Framework
 concepts](https://developers.google.com/mediapipe/framework/framework_concepts/overview.md):
 
-*   [Packets](https://developers.google.com/mediapipe/framework/framework_concepts/packets.md)
-*   [Graphs](https://developers.google.com/mediapipe/framework/framework_concepts/graphs.md)
-*   [Calculators](https://developers.google.com/mediapipe/framework/framework_concepts/calculators.md)
+- [Packets](https://developers.google.com/mediapipe/framework/framework_concepts/packets.md)
+- [Graphs](https://developers.google.com/mediapipe/framework/framework_concepts/graphs.md)
+- [Calculators](https://developers.google.com/mediapipe/framework/framework_concepts/calculators.md)
 
 ## Community
 
-*   [Slack community](https://mediapipe.page.link/joinslack) for MediaPipe
-    users.
-*   [Discuss](https://groups.google.com/forum/#!forum/mediapipe) - General
-    community discussion around MediaPipe.
-*   [Awesome MediaPipe](https://mediapipe.page.link/awesome-mediapipe) - A
-    curated list of awesome MediaPipe related frameworks, libraries and
-    software.
+- [Slack community](https://mediapipe.page.link/joinslack) for MediaPipe
+  users.
+- [Discuss](https://groups.google.com/forum/#!forum/mediapipe) - General
+  community discussion around MediaPipe.
+- [Awesome MediaPipe](https://mediapipe.page.link/awesome-mediapipe) - A
+  curated list of awesome MediaPipe related frameworks, libraries and
+  software.
 
 ## Contributing
 
@@ -117,42 +117,44 @@ the MediaPipe Stack Overflow with a `mediapipe` tag.
 
 ### Publications
 
-*   [Bringing artworks to life with AR](https://developers.googleblog.com/2021/07/bringing-artworks-to-life-with-ar.html)
-    in Google Developers Blog
-*   [Prosthesis control via Mirru App using MediaPipe hand tracking](https://developers.googleblog.com/2021/05/control-your-mirru-prosthesis-with-mediapipe-hand-tracking.html)
-    in Google Developers Blog
-*   [SignAll SDK: Sign language interface using MediaPipe is now available for
-    developers](https://developers.googleblog.com/2021/04/signall-sdk-sign-language-interface-using-mediapipe-now-available.html)
-    in Google Developers Blog
-*   [MediaPipe Holistic - Simultaneous Face, Hand and Pose Prediction, on
-    Device](https://ai.googleblog.com/2020/12/mediapipe-holistic-simultaneous-face.html)
-    in Google AI Blog
-*   [Background Features in Google Meet, Powered by Web ML](https://ai.googleblog.com/2020/10/background-features-in-google-meet.html)
-    in Google AI Blog
-*   [MediaPipe 3D Face Transform](https://developers.googleblog.com/2020/09/mediapipe-3d-face-transform.html)
-    in Google Developers Blog
-*   [Instant Motion Tracking With MediaPipe](https://developers.googleblog.com/2020/08/instant-motion-tracking-with-mediapipe.html)
-    in Google Developers Blog
-*   [BlazePose - On-device Real-time Body Pose Tracking](https://ai.googleblog.com/2020/08/on-device-real-time-body-pose-tracking.html)
-    in Google AI Blog
-*   [MediaPipe Iris: Real-time Eye Tracking and Depth Estimation](https://ai.googleblog.com/2020/08/mediapipe-iris-real-time-iris-tracking.html)
-    in Google AI Blog
-*   [MediaPipe KNIFT: Template-based feature matching](https://developers.googleblog.com/2020/04/mediapipe-knift-template-based-feature-matching.html)
-    in Google Developers Blog
-*   [Alfred Camera: Smart camera features using MediaPipe](https://developers.googleblog.com/2020/03/alfred-camera-smart-camera-features-using-mediapipe.html)
-    in Google Developers Blog
-*   [Real-Time 3D Object Detection on Mobile Devices with MediaPipe](https://ai.googleblog.com/2020/03/real-time-3d-object-detection-on-mobile.html)
-    in Google AI Blog
-*   [AutoFlip: An Open Source Framework for Intelligent Video Reframing](https://ai.googleblog.com/2020/02/autoflip-open-source-framework-for.html)
-    in Google AI Blog
-*   [MediaPipe on the Web](https://developers.googleblog.com/2020/01/mediapipe-on-web.html)
-    in Google Developers Blog
-*   [Object Detection and Tracking using MediaPipe](https://developers.googleblog.com/2019/12/object-detection-and-tracking-using-mediapipe.html)
-    in Google Developers Blog
-*   [On-Device, Real-Time Hand Tracking with MediaPipe](https://ai.googleblog.com/2019/08/on-device-real-time-hand-tracking-with.html)
-    in Google AI Blog
-*   [MediaPipe: A Framework for Building Perception Pipelines](https://arxiv.org/abs/1906.08172)
+- [Bringing artworks to life with AR](https://developers.googleblog.com/2021/07/bringing-artworks-to-life-with-ar.html)
+  in Google Developers Blog
+- [Prosthesis control via Mirru App using MediaPipe hand tracking](https://developers.googleblog.com/2021/05/control-your-mirru-prosthesis-with-mediapipe-hand-tracking.html)
+  in Google Developers Blog
+- [SignAll SDK: Sign language interface using MediaPipe is now available for
+  developers](https://developers.googleblog.com/2021/04/signall-sdk-sign-language-interface-using-mediapipe-now-available.html)
+  in Google Developers Blog
+- [MediaPipe Holistic - Simultaneous Face, Hand and Pose Prediction, on
+  Device](https://ai.googleblog.com/2020/12/mediapipe-holistic-simultaneous-face.html)
+  in Google AI Blog
+- [Background Features in Google Meet, Powered by Web ML](https://ai.googleblog.com/2020/10/background-features-in-google-meet.html)
+  in Google AI Blog
+- [MediaPipe 3D Face Transform](https://developers.googleblog.com/2020/09/mediapipe-3d-face-transform.html)
+  in Google Developers Blog
+- [Instant Motion Tracking With MediaPipe](https://developers.googleblog.com/2020/08/instant-motion-tracking-with-mediapipe.html)
+  in Google Developers Blog
+- [BlazePose - On-device Real-time Body Pose Tracking](https://ai.googleblog.com/2020/08/on-device-real-time-body-pose-tracking.html)
+  in Google AI Blog
+- [MediaPipe Iris: Real-time Eye Tracking and Depth Estimation](https://ai.googleblog.com/2020/08/mediapipe-iris-real-time-iris-tracking.html)
+  in Google AI Blog
+- [MediaPipe KNIFT: Template-based feature matching](https://developers.googleblog.com/2020/04/mediapipe-knift-template-based-feature-matching.html)
+  in Google Developers Blog
+- [Alfred Camera: Smart camera features using MediaPipe](https://developers.googleblog.com/2020/03/alfred-camera-smart-camera-features-using-mediapipe.html)
+  in Google Developers Blog
+- [Real-Time 3D Object Detection on Mobile Devices with MediaPipe](https://ai.googleblog.com/2020/03/real-time-3d-object-detection-on-mobile.html)
+  in Google AI Blog
+- [AutoFlip: An Open Source Framework for Intelligent Video Reframing](https://ai.googleblog.com/2020/02/autoflip-open-source-framework-for.html)
+  in Google AI Blog
+- [MediaPipe on the Web](https://developers.googleblog.com/2020/01/mediapipe-on-web.html)
+  in Google Developers Blog
+- [Object Detection and Tracking using MediaPipe](https://developers.googleblog.com/2019/12/object-detection-and-tracking-using-mediapipe.html)
+  in Google Developers Blog
+- [On-Device, Real-Time Hand Tracking with MediaPipe](https://ai.googleblog.com/2019/08/on-device-real-time-hand-tracking-with.html)
+  in Google AI Blog
+- [MediaPipe: A Framework for Building Perception Pipelines](https://arxiv.org/abs/1906.08172)
 
 ### Videos
 
-*   [YouTube Channel](https://www.youtube.com/c/MediaPipe)
+- [YouTube Channel](https://www.youtube.com/c/MediaPipe)
+
+# myMediapipe
