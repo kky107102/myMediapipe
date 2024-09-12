@@ -1,0 +1,32 @@
+프로그램을 실행하려면 windows에 mediapipe framework가 설치되어있어야합니다.
+
+아래 링크에서 안내된 절차에 따라 필요한 프로그램을 설치합니다. https://ai.google.dev/edge/mediapipe/framework/getting_started/install#installing_on_windows
+
+이때
+
+7번 - mediaPipe repository 링크를 제 github링크로 수정하여 git clone합니다.
+$ git clone -b kky_face_deformation  https://github.com/kky107102/mediapipe.git
+
+9번 - Hello World! in C++ example 을 실행하는 대신
+
+mediapipe\examples\desktop\face_deformation_main_gaussian.cc 또는
+
+mediapipe\examples\desktop\face_deformation_main_thinPlate.cc의
+
+파일의 끝에 적힌 명령을 입력합니다.
+
+아래는 face_deformation_main_gaussian.cc의 빌드명령과 실행명령입니다.
+
+실행명령의 이미지 경로는 수정해서 사용바랍니다.
+
+// 명령 위치
+
+// ~/mediapipe_repo/mediapipe
+
+// 빌드 명령
+
+// bazel build -c opt --define MEDIAPIPE_DISABLE_GPU=1 --action_env PYTHON_BIN_PATH="C://Python//python.exe" mediapipe/examples/desktop/face_mesh:face_deformation_gaussian
+
+// 실행 명령(예시), .pptxt 뒤는 순서대로 src이미지 경로, model이미지 경로
+
+// GLOG_logtostderr=1 bazel-bin/mediapipe/examples/desktop/face_mesh/face_deformation_gaussian --calculator_graph_config_file=mediapipe/graphs/face_mesh/face_mesh_desktop_live.pbtxt C:/dh.jpg C:/ya.jpg

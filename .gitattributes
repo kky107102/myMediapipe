@@ -1,0 +1,5 @@
+wxWidgets/* filter=lfs diff=lfs merge=lfs -text
+wxWidgets/build/msw/.vs/wx_vc11/v17/Browse.VC.db filter=lfs diff=lfs merge=lfs -text
+wxWidgets/build/msw/vc_x64_mswuddll/core/wxmsw325ud_core_vc_x64_custom.ilk filter=lfs diff=lfs merge=lfs -text
+wxWidgets/build/msw/vc_x64_mswuddll/wxprec_coredll.pch filter=lfs diff=lfs merge=lfs -text
+wxWdigets/* filter=lfs diff=lfs merge=lfs -text
