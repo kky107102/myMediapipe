@@ -1,6 +1,6 @@
 # myMediapipe
 
-이는 <https://github.com/google-ai-edge/mediapipe.git>에서 포크하여 수정한 코드입니다.
+이는 <https://github.com/google/mediapipe.git>에서 포크하여 수정한 코드입니다.
 
 프로그램을 실행하려면 windows에 mediapipe framework가 설치되어있어야합니다.
 
