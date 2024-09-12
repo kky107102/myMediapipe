@@ -1,13 +1,18 @@
 # myMediapipe
 
+이는 <https://github.com/google-ai-edge/mediapipe.git>에서 포크하여 수정한 코드입니다.
+
 프로그램을 실행하려면 windows에 mediapipe framework가 설치되어있어야합니다.
 
-아래 링크에서 안내된 절차에 따라 필요한 프로그램을 설치합니다. https://ai.google.dev/edge/mediapipe/framework/getting_started/install#installing_on_windows
+아래에서 안내된 절차에 따라 필요한 프로그램을 설치합니다. 
+
+https://ai.google.dev/edge/mediapipe/framework/getting_started/install#installing_on_windows
 
 이때
 
-7번 - mediaPipe repository 링크를 제 github링크로 수정하여 git clone합니다.
-$ git clone https://github.com/kky107102/myMediapipe.git
+7번 - mediaPipe repository 링크를 제 repository링크로 수정하여 git clone합니다.
+
+    git clone https://github.com/kky107102/myMediapipe.git
 
 9번 - Hello World! in C++ example 을 실행하는 대신
 
@@ -27,11 +32,11 @@ mediapipe\examples\desktop\face_deformation_main_thinPlate.cc의
 
 // 빌드 명령
 
-// bazel build -c opt --define MEDIAPIPE_DISABLE_GPU=1 --action_env PYTHON_BIN_PATH="C://Python//python.exe" mediapipe/examples/desktop/face_mesh:face_deformation_gaussian
+    bazel build -c opt --define MEDIAPIPE_DISABLE_GPU=1 --action_env PYTHON_BIN_PATH="C://Python//python.exe" mediapipe/examples/desktop/face_mesh:face_deformation_gaussian
 
 // 실행 명령(예시), .pptxt 뒤는 순서대로 src이미지 경로, model이미지 경로
 
-// GLOG_logtostderr=1 bazel-bin/mediapipe/examples/desktop/face_mesh/face_deformation_gaussian --calculator_graph_config_file=mediapipe/graphs/face_mesh/face_mesh_desktop_live.pbtxt C:/dh.jpg C:/ya.jpg
+    GLOG_logtostderr=1 bazel-bin/mediapipe/examples/desktop/face_mesh/face_deformation_gaussian --calculator_graph_config_file=mediapipe/graphs/face_mesh/face_mesh_desktop_live.pbtxt C:/dh.jpg C:/ya.jpg
 
 ---
 layout: forward
